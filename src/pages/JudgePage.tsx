@@ -34,38 +34,91 @@ export default function JudgePage() {
   const subscribeToSessionChanges = () => {
     console.log('Subscribing to session changes...');
     
-    // Subscribe to new session creation
+    // Polling fallback - check for new sessions every 5 seconds
+    const pollingInterval = setInterval(async () => {
+      if (!isLoggedIn) {
+        try {
+          const latestSession = await getLatestSession();
+          if (latestSession && latestSession.session_id !== sessionId) {
+            setSessionId(latestSession.session_id);
+            console.log('Polling: Updated to new session:', latestSession.session_id);
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }
+    }, 5000);
+
+    // Try real-time subscription as well
     const sessionChannel = supabase
-      .channel('sessions-monitor')
+      .channel('sessions-monitor', {
+        config: {
+          broadcast: { self: false },
+          presence: { key: '' }
+        }
+      })
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'sessions' },
         async (payload) => {
-          console.log('New session detected:', payload);
+          console.log('Real-time: New session detected:', payload);
           
-          // If judge is not logged in, update the session ID display
           if (!isLoggedIn) {
             const latestSession = await getLatestSession();
             if (latestSession) {
               setSessionId(latestSession.session_id);
-              console.log('Updated to new session:', latestSession.session_id);
+              console.log('Real-time: Updated to new session:', latestSession.session_id);
             }
           }
         }
       )
       .subscribe((status) => {
         console.log('Session monitor status:', status);
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('Real-time subscription failed, using polling fallback');
+        }
       });
 
     return () => {
+      clearInterval(pollingInterval);
       sessionChannel.unsubscribe();
     };
   };
 
   useEffect(() => {
     if (isLoggedIn && sessionId !== 'لم تبدأ') {
-      subscribeToQuestions();
+      const cleanup = subscribeToQuestions();
+      const validationInterval = startSessionValidation();
+      
+      return () => {
+        cleanup?.();
+        clearInterval(validationInterval);
+      };
     }
   }, [isLoggedIn, sessionId]);
+
+  const startSessionValidation = () => {
+    // Poll every 3 seconds to check if session still exists
+    const interval = setInterval(async () => {
+      if (isLoggedIn && sessionId !== 'لم تبدأ') {
+        try {
+          const { data, error } = await supabase
+            .from('sessions')
+            .select('session_id')
+            .eq('session_id', sessionId)
+            .single();
+          
+          if (error || !data) {
+            console.log('Session no longer exists, logging out...');
+            handleSessionEnd();
+          }
+        } catch (error) {
+          console.error('Session validation error:', error);
+        }
+      }
+    }, 3000);
+    
+    return interval;
+  };
 
   const checkExistingSession = () => {
     const savedSessionId = localStorage.getItem('judgeSessionId');
