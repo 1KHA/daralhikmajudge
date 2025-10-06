@@ -55,7 +55,7 @@ export default function HostPage() {
     }
   };
 
-  const checkExistingSession = () => {
+  const checkExistingSession = async () => {
     const savedSessionId = localStorage.getItem('hostSessionId');
     const savedHostToken = localStorage.getItem('hostToken');
     
@@ -63,6 +63,8 @@ export default function HostPage() {
       setSessionId(savedSessionId);
       setHostToken(savedHostToken);
       subscribeToSession(savedSessionId);
+      // Load initial judges
+      await loadJudges(savedSessionId);
     }
   };
 
@@ -270,7 +272,21 @@ export default function HostPage() {
       });
 
       // Broadcast to judges via Supabase Realtime
-      const channel = supabase.channel(`session-${sessionId}`);
+      const channel = supabase.channel(`session-${sessionId}`, {
+        config: {
+          broadcast: { self: true }
+        }
+      });
+      
+      // Subscribe first, then send
+      await new Promise((resolve) => {
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            resolve(true);
+          }
+        });
+      });
+
       await channel.send({
         type: 'broadcast',
         event: 'new-questions',
@@ -281,7 +297,13 @@ export default function HostPage() {
         }
       });
 
+      console.log('Questions broadcasted successfully');
       alert('تم إرسال الأسئلة بنجاح');
+      
+      // Unsubscribe after sending
+      setTimeout(() => {
+        channel.unsubscribe();
+      }, 1000);
     } catch (error) {
       console.error('Error sending questions:', error);
       alert('خطأ في إرسال الأسئلة');
