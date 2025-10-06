@@ -69,40 +69,52 @@ export default function HostPage() {
   };
 
   const subscribeToSession = (sessionId: string) => {
+    console.log('Setting up real-time subscriptions for session:', sessionId);
+    
     // Subscribe to judges changes
     const judgesChannel = supabase
       .channel(`judges-${sessionId}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'judges', filter: `session_id=eq.${sessionId}` },
-        () => {
+        (payload) => {
+          console.log('Judge change detected:', payload);
           loadJudges(sessionId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Judges channel status:', status);
+      });
 
     // Subscribe to answers changes
     const answersChannel = supabase
       .channel(`answers-${sessionId}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'answers', filter: `session_id=eq.${sessionId}` },
-        () => {
+        (payload) => {
+          console.log('Answer change detected:', payload);
           loadAnswers(sessionId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Answers channel status:', status);
+      });
 
     // Subscribe to results changes
     const resultsChannel = supabase
       .channel(`results-${sessionId}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'session_results', filter: `session_id=eq.${sessionId}` },
-        () => {
+        (payload) => {
+          console.log('Results change detected:', payload);
           loadLeaderboard(sessionId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Results channel status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up real-time subscriptions');
       judgesChannel.unsubscribe();
       answersChannel.unsubscribe();
       resultsChannel.unsubscribe();

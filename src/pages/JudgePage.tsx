@@ -119,8 +119,11 @@ export default function JudgePage() {
     }
 
     try {
+      console.log('Attempting to join game...');
+      
       // Fetch the latest active session
       const latestSession = await getLatestSession();
+      console.log('Latest session:', latestSession);
       
       if (!latestSession) {
         alert('لا توجد جلسة نشطة حالياً. يرجى الانتظار حتى يبدأ المضيف جلسة جديدة.');
@@ -129,11 +132,18 @@ export default function JudgePage() {
 
       const newJudgeToken = crypto.randomUUID();
       
+      console.log('Creating judge with:', {
+        name: judgeName,
+        session_id: latestSession.session_id
+      });
+      
       const judge = await createJudge({
         name: judgeName,
         judge_token: newJudgeToken,
         session_id: latestSession.session_id
       });
+
+      console.log('Judge created successfully:', judge);
 
       setJudgeId(judge.id);
       setJudgeToken(newJudgeToken);
