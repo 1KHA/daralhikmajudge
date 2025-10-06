@@ -133,19 +133,29 @@ export default function HostPage() {
   const loadAnswers = async (sessionId: string) => {
     try {
       const answersData = await getAnswersBySession(sessionId);
+      const judgesData = await getJudgesBySession(sessionId);
+      
+      // Create a map of judge IDs to names
+      const judgeMap = new Map(judgesData.map(judge => [judge.id, judge.name]));
+      
       // Group answers by team
       const grouped: AnswersByTeam = {};
       answersData.forEach(answer => {
-        const teamName = answer.team_id; // You might need to fetch team name
+        const teamName = answer.team_id;
         if (!grouped[teamName]) {
           grouped[teamName] = [];
         }
         grouped[teamName].push({
-          player: answer.judge_id, // You might need to fetch judge name
+          player: judgeMap.get(answer.judge_id) || answer.judge_id, // Use judge name or fallback to ID
           answer: answer.answer
         });
       });
       setAnswers(grouped);
+      
+      console.log('Answers loaded and grouped:', grouped);
+      
+      // Also update leaderboard when answers change
+      await loadLeaderboard(sessionId);
     } catch (error) {
       console.error('Error loading answers:', error);
     }
@@ -153,14 +163,53 @@ export default function HostPage() {
 
   const loadLeaderboard = async (sessionId: string) => {
     try {
+      // First try to get from session_results
       const results = await getSessionResults(sessionId);
-      const leaderboardData = results.map(result => ({
-        teamName: result.team_id, // You might need to fetch team name
-        totalPoints: result.total_points
-      }));
-      setLeaderboard(leaderboardData);
+      
+      if (results.length > 0) {
+        const leaderboardData = results.map(result => ({
+          teamName: result.team_id,
+          totalPoints: result.total_points
+        }));
+        setLeaderboard(leaderboardData);
+      } else {
+        // If no results, calculate from answers
+        await calculateLeaderboardFromAnswers(sessionId);
+      }
+      
+      console.log('Leaderboard loaded');
     } catch (error) {
       console.error('Error loading leaderboard:', error);
+    }
+  };
+
+  const calculateLeaderboardFromAnswers = async (sessionId: string) => {
+    try {
+      const answersData = await getAnswersBySession(sessionId);
+      
+      // Count answers per team
+      const teamScores: { [key: string]: number } = {};
+      answersData.forEach(answer => {
+        const teamName = answer.team_id;
+        if (!teamScores[teamName]) {
+          teamScores[teamName] = 0;
+        }
+        // Each answer counts as 1 point for now (you can adjust scoring logic)
+        teamScores[teamName] += 1;
+      });
+      
+      // Convert to leaderboard format and sort
+      const leaderboardData = Object.entries(teamScores)
+        .map(([teamName, totalPoints]) => ({
+          teamName,
+          totalPoints
+        }))
+        .sort((a, b) => b.totalPoints - a.totalPoints);
+      
+      setLeaderboard(leaderboardData);
+      console.log('Leaderboard calculated from answers:', leaderboardData);
+    } catch (error) {
+      console.error('Error calculating leaderboard:', error);
     }
   };
 
