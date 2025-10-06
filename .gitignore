@@ -36,3 +36,6 @@ dist-ssr
 *.md
 vite.md 
 plan.md 
+supabase-schema.sql 
+
+migrate.js 
