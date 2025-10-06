@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { createJudge, getJudge, submitAnswer } from '../lib/supabaseService';
+import { createJudge, getJudge, submitAnswer, getLatestSession } from '../lib/supabaseService';
 import type { Question } from '../types';
 
 export default function JudgePage() {
@@ -16,7 +16,19 @@ export default function JudgePage() {
 
   useEffect(() => {
     checkExistingSession();
+    fetchLatestSessionId();
   }, []);
+
+  const fetchLatestSessionId = async () => {
+    try {
+      const latestSession = await getLatestSession();
+      if (latestSession) {
+        setSessionId(latestSession.session_id);
+      }
+    } catch (error) {
+      console.error('Error fetching latest session:', error);
+    }
+  };
 
   useEffect(() => {
     if (isLoggedIn && sessionId !== 'لم تبدأ') {
@@ -107,27 +119,34 @@ export default function JudgePage() {
     }
 
     try {
+      // Fetch the latest active session
+      const latestSession = await getLatestSession();
+      
+      if (!latestSession) {
+        alert('لا توجد جلسة نشطة حالياً. يرجى الانتظار حتى يبدأ المضيف جلسة جديدة.');
+        return;
+      }
+
       const newJudgeToken = crypto.randomUUID();
-      const defaultSessionId = '1234'; // Default PIN matching host
       
       const judge = await createJudge({
         name: judgeName,
         judge_token: newJudgeToken,
-        session_id: defaultSessionId
+        session_id: latestSession.session_id
       });
 
       setJudgeId(judge.id);
       setJudgeToken(newJudgeToken);
-      setSessionId(defaultSessionId);
+      setSessionId(latestSession.session_id);
       setIsLoggedIn(true);
 
-      localStorage.setItem('judgeSessionId', defaultSessionId);
+      localStorage.setItem('judgeSessionId', latestSession.session_id);
       localStorage.setItem('judgeName', judgeName);
       localStorage.setItem('judgeToken', newJudgeToken);
 
       // Show success message
       setTimeout(() => {
-        alert(`مرحباً ${judgeName}! تم الانضمام بنجاح`);
+        alert(`مرحباً ${judgeName}! تم الانضمام بنجاح للجلسة: ${latestSession.session_id}`);
       }, 100);
     } catch (error) {
       console.error('Error joining game:', error);

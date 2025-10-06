@@ -159,12 +159,12 @@ export default function HostPage() {
     }
 
     try {
-      const defaultSessionId = '1234'; // Fixed PIN for easy judge joining
+      const newSessionId = crypto.randomUUID().substring(0, 8);
       const newHostToken = crypto.randomUUID();
       
       const session = await createSession({
         name: `Session ${new Date().toISOString()}`,
-        session_id: defaultSessionId,
+        session_id: newSessionId,
         host_token: newHostToken,
         teams: selectedTeams,
         total_points: 100

@@ -104,6 +104,21 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
   if (error) throw error;
 };
 
+export const getLatestSession = async (): Promise<Session | null> => {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  
+  if (error) {
+    if (error.code === 'PGRST116') return null; // No sessions found
+    throw error;
+  }
+  return data;
+};
+
 // Judges
 export const createJudge = async (judgeData: {
   name: string;
