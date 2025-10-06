@@ -5,7 +5,6 @@ import type { Question } from '../types';
 
 export default function JudgePage() {
   const [sessionId, setSessionId] = useState<string>('لم تبدأ');
-  const [inputSessionId, setInputSessionId] = useState<string>('');
   const [judgeName, setJudgeName] = useState<string>('');
   const [judgeId, setJudgeId] = useState<string>('');
   const [judgeToken, setJudgeToken] = useState<string>('');
@@ -107,26 +106,22 @@ export default function JudgePage() {
       return;
     }
 
-    if (!inputSessionId.trim()) {
-      alert('يرجى إدخال معرف الجلسة');
-      return;
-    }
-
     try {
       const newJudgeToken = crypto.randomUUID();
+      const defaultSessionId = '1234'; // Default PIN matching host
       
       const judge = await createJudge({
         name: judgeName,
         judge_token: newJudgeToken,
-        session_id: inputSessionId.trim()
+        session_id: defaultSessionId
       });
 
       setJudgeId(judge.id);
       setJudgeToken(newJudgeToken);
-      setSessionId(inputSessionId.trim());
+      setSessionId(defaultSessionId);
       setIsLoggedIn(true);
 
-      localStorage.setItem('judgeSessionId', inputSessionId.trim());
+      localStorage.setItem('judgeSessionId', defaultSessionId);
       localStorage.setItem('judgeName', judgeName);
       localStorage.setItem('judgeToken', newJudgeToken);
 
@@ -225,30 +220,6 @@ export default function JudgePage() {
             </div>
 
             <div style={{ marginBottom: '20px', textAlign: 'right' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontWeight: 500,
-                color: 'var(--text-secondary)',
-                fontSize: '14px'
-              }}>
-                معرف الجلسة
-              </label>
-              <input
-                type="text"
-                value={inputSessionId}
-                onChange={(e) => setInputSessionId(e.target.value)}
-                placeholder="أدخل معرف الجلسة من المضيف"
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  marginBottom: '16px'
-                }}
-              />
-              
               <label style={{
                 display: 'block',
                 marginBottom: '8px',

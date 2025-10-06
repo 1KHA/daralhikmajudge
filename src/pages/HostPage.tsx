@@ -159,12 +159,12 @@ export default function HostPage() {
     }
 
     try {
-      const newSessionId = crypto.randomUUID().substring(0, 8);
+      const defaultSessionId = '1234'; // Fixed PIN for easy judge joining
       const newHostToken = crypto.randomUUID();
       
       const session = await createSession({
         name: `Session ${new Date().toISOString()}`,
-        session_id: newSessionId,
+        session_id: defaultSessionId,
         host_token: newHostToken,
         teams: selectedTeams,
         total_points: 100
@@ -179,6 +179,7 @@ export default function HostPage() {
       localStorage.setItem('hostToken', newHostToken);
 
       subscribeToSession(session.session_id);
+      await loadJudges(session.session_id);
       alert(`تم إنشاء الجلسة: ${session.session_id}`);
     } catch (error) {
       console.error('Error creating session:', error);
