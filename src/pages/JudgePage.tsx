@@ -17,6 +17,7 @@ export default function JudgePage() {
   useEffect(() => {
     checkExistingSession();
     fetchLatestSessionId();
+    subscribeToSessionChanges();
   }, []);
 
   const fetchLatestSessionId = async () => {
@@ -28,6 +29,36 @@ export default function JudgePage() {
     } catch (error) {
       console.error('Error fetching latest session:', error);
     }
+  };
+
+  const subscribeToSessionChanges = () => {
+    console.log('Subscribing to session changes...');
+    
+    // Subscribe to new session creation
+    const sessionChannel = supabase
+      .channel('sessions-monitor')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'sessions' },
+        async (payload) => {
+          console.log('New session detected:', payload);
+          
+          // If judge is not logged in, update the session ID display
+          if (!isLoggedIn) {
+            const latestSession = await getLatestSession();
+            if (latestSession) {
+              setSessionId(latestSession.session_id);
+              console.log('Updated to new session:', latestSession.session_id);
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Session monitor status:', status);
+      });
+
+    return () => {
+      sessionChannel.unsubscribe();
+    };
   };
 
   useEffect(() => {
