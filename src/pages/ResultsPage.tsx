@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getAnswersBySession, getJudgesBySession } from '../lib/supabaseService';
-import type { Answer } from '../types';
+import type { Answer, Question } from '../types';
 
 interface SessionData {
   session_id: string;
@@ -12,6 +12,7 @@ interface SessionData {
   total_points: number;
   answers: Answer[];
   judges: any[];
+  questions: Map<string, Question>;
 }
 
 interface TeamResult {
@@ -44,7 +45,7 @@ export default function ResultsPage() {
 
       console.log('📊 Loaded sessions:', sessionsData?.length || 0);
 
-      // For each session, fetch answers and judges
+      // For each session, fetch answers, judges, and questions
       const sessionsWithData = await Promise.all(
         (sessionsData || []).map(async (session) => {
           const [answers, judges] = await Promise.all([
@@ -52,12 +53,26 @@ export default function ResultsPage() {
             getJudgesBySession(session.session_id)
           ]);
           
-          console.log(`Session ${session.session_id}: ${answers.length} answers, ${judges.length} judges`);
+          // Fetch questions for this session's answers
+          const questionIds = [...new Set(answers.map(a => a.question_id))];
+          const questionsMap = new Map<string, Question>();
+          
+          if (questionIds.length > 0) {
+            const { data: questionsData } = await supabase
+              .from('questions')
+              .select('*')
+              .in('id', questionIds);
+            
+            questionsData?.forEach(q => questionsMap.set(q.id, q));
+          }
+          
+          console.log(`Session ${session.session_id}: ${answers.length} answers, ${judges.length} judges, ${questionsMap.size} questions`);
           
           return {
             ...session,
             answers,
-            judges
+            judges,
+            questions: questionsMap
           };
         })
       );
@@ -107,6 +122,38 @@ export default function ResultsPage() {
   const getJudgeName = (judgeId: string, judges: any[]) => {
     const judge = judges.find(j => j.id === judgeId);
     return judge ? judge.name : judgeId;
+  };
+
+  const getCalculationDetails = (answer: Answer, question: Question | undefined) => {
+    if (!question) {
+      return {
+        choiceWeight: 1,
+        maxWeight: 1,
+        questionWeight: 1,
+        formula: 'N/A'
+      };
+    }
+
+    const choices = question.choices;
+    let choiceWeight = 1;
+    let maxWeight = 1;
+
+    if (choices.length > 0 && typeof choices[0] === 'object') {
+      const choiceObjects = choices as Array<{text: string; weight: number}>;
+      const selectedChoice = choiceObjects.find(c => c.text === answer.answer);
+      choiceWeight = selectedChoice?.weight || 0;
+      maxWeight = Math.max(...choiceObjects.map(c => c.weight));
+    }
+
+    const questionWeight = question.weight || 1;
+    const formula = `(${choiceWeight} / ${maxWeight}) × ${questionWeight} = ${(answer.points || 1).toFixed(2)}`;
+
+    return {
+      choiceWeight,
+      maxWeight,
+      questionWeight,
+      formula
+    };
   };
 
   if (loading) {
@@ -356,6 +403,22 @@ export default function ResultsPage() {
                           </div>
                         </div>
                         
+                        {/* Formula Display */}
+                        <div style={{
+                          background: 'white',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          marginBottom: '16px',
+                          border: '2px solid var(--primary-light)'
+                        }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary-color)', marginBottom: '4px' }}>
+                            📐 معادلة الحساب
+                          </div>
+                          <div style={{ fontSize: '14px', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                            النقاط = (وزن الخيار / أقصى وزن) × وزن السؤال
+                          </div>
+                        </div>
+
                         <div style={{ overflowX: 'auto' }}>
                           <table className="leaderboard-table">
                             <thead>
@@ -363,24 +426,44 @@ export default function ResultsPage() {
                                 <th>#</th>
                                 <th>المحكم</th>
                                 <th>الإجابة</th>
+                                <th>وزن الخيار</th>
+                                <th>أقصى وزن</th>
+                                <th>وزن السؤال</th>
+                                <th>الحساب</th>
                                 <th>النقاط</th>
                                 <th>الوقت</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {team.answers.map((answer, idx) => (
-                                <tr key={answer.id}>
-                                  <td>{idx + 1}</td>
-                                  <td>{getJudgeName(answer.judge_id, session.judges)}</td>
-                                  <td>{answer.answer}</td>
-                                  <td style={{ fontWeight: 600, color: 'var(--primary-color)' }}>
-                                    {(answer.points || 1).toFixed(2)}
-                                  </td>
-                                  <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                    {new Date(answer.created_at || '').toLocaleTimeString('ar-SA')}
-                                  </td>
-                                </tr>
-                              ))}
+                              {team.answers.map((answer, idx) => {
+                                const question = session.questions.get(answer.question_id);
+                                const calc = getCalculationDetails(answer, question);
+                                return (
+                                  <tr key={answer.id}>
+                                    <td>{idx + 1}</td>
+                                    <td>{getJudgeName(answer.judge_id, session.judges)}</td>
+                                    <td>{answer.answer}</td>
+                                    <td style={{ textAlign: 'center', color: 'var(--secondary-color)' }}>
+                                      {calc.choiceWeight}
+                                    </td>
+                                    <td style={{ textAlign: 'center', color: 'var(--secondary-color)' }}>
+                                      {calc.maxWeight}
+                                    </td>
+                                    <td style={{ textAlign: 'center', color: 'var(--secondary-color)' }}>
+                                      {calc.questionWeight}
+                                    </td>
+                                    <td style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                                      {calc.formula}
+                                    </td>
+                                    <td style={{ fontWeight: 700, color: 'var(--primary-color)', fontSize: '16px' }}>
+                                      {(answer.points || 1).toFixed(2)}
+                                    </td>
+                                    <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                      {new Date(answer.created_at || '').toLocaleTimeString('ar-SA')}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
