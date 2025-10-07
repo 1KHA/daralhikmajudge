@@ -13,7 +13,6 @@ export default function JudgePage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: string }>({});
   const [judgeState, setJudgeState] = useState<'judging' | 'waiting'>('judging');
-  const [submittedCount, setSubmittedCount] = useState<number>(0);
 
   useEffect(() => {
     checkExistingSession();
@@ -322,7 +321,6 @@ export default function JudgePage() {
 
     // All answers are already submitted individually
     const count = Object.keys(selectedAnswers).length;
-    setSubmittedCount(count);
     
     // Transition to waiting state
     setJudgeState('waiting');
@@ -474,8 +472,7 @@ export default function JudgePage() {
                 <div style={{
                   background: 'var(--secondary-light)',
                   padding: '32px',
-                  borderRadius: '12px',
-                  marginBottom: '24px'
+                  borderRadius: '12px'
                 }}>
                   <div style={{
                     width: '80px',
@@ -496,34 +493,10 @@ export default function JudgePage() {
                   </h3>
                   <p style={{
                     fontSize: '14px',
-                    color: 'var(--text-secondary)',
-                    marginBottom: '20px'
+                    color: 'var(--text-secondary)'
                   }}>
                     سيتم عرض الأسئلة الجديدة تلقائياً عندما يرسلها المضيف
                   </p>
-                </div>
-
-                <div style={{
-                  background: 'white',
-                  border: '2px solid var(--border-color)',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  display: 'inline-block'
-                }}>
-                  <div style={{
-                    fontSize: '14px',
-                    color: 'var(--text-secondary)',
-                    marginBottom: '8px'
-                  }}>
-                    📊 عدد الإجابات المرسلة
-                  </div>
-                  <div style={{
-                    fontSize: '36px',
-                    fontWeight: 700,
-                    color: 'var(--primary-color)'
-                  }}>
-                    {submittedCount}
-                  </div>
                 </div>
 
                 <style>{`
