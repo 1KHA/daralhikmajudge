@@ -8,7 +8,6 @@ import {
   updateSession,
   getJudgesBySession,
   getAnswersBySession,
-  getSessionResults,
   upsertSessionResult
 } from '../lib/supabaseService';
 import type { Team, Question, QuestionBank, Judge, Answer, LeaderboardEntry, AnswersByTeam } from '../types';
@@ -161,21 +160,11 @@ export default function HostPage() {
 
   const loadLeaderboard = async (sessionId: string) => {
     try {
-      // First try to get from session_results
-      const results = await getSessionResults(sessionId);
+      // Always calculate from real-time answers for live sessions
+      // This ensures we show weighted points as they come in
+      await calculateLeaderboardFromAnswers(sessionId);
       
-      if (results.length > 0) {
-        const leaderboardData = results.map(result => ({
-          teamName: result.team_id,
-          totalPoints: result.total_points
-        }));
-        setLeaderboard(leaderboardData);
-      } else {
-        // If no results, calculate from answers
-        await calculateLeaderboardFromAnswers(sessionId);
-      }
-      
-      console.log('Leaderboard loaded');
+      console.log('Leaderboard loaded from real-time answers');
     } catch (error) {
       console.error('Error loading leaderboard:', error);
     }
