@@ -9,9 +9,10 @@ import {
   deleteSession,
   getJudgesBySession,
   getAnswersBySession,
-  getSessionResults
+  getSessionResults,
+  upsertSessionResult
 } from '../lib/supabaseService';
-import type { Team, Question, QuestionBank, Judge, LeaderboardEntry, AnswersByTeam } from '../types';
+import type { Team, Question, QuestionBank, Judge, Answer, LeaderboardEntry, AnswersByTeam } from '../types';
 
 export default function HostPage() {
   const [sessionId, setSessionId] = useState<string>('لم تبدأ');
@@ -278,11 +279,49 @@ export default function HostPage() {
   const handleEndSession = async () => {
     if (sessionId === 'لم تبدأ') return;
     
-    if (!confirm('هل أنت متأكد من إنهاء الجلسة؟')) return;
+    if (!confirm('هل أنت متأكد من إنهاء الجلسة؟ سيتم حفظ النتائج النهائية.')) return;
 
     try {
-      await deleteSession(sessionId);
+      // Calculate and save final results for all teams
+      const answersData = await getAnswersBySession(sessionId);
       
+      // Group answers by team and calculate scores
+      const teamScores: { [key: string]: { answers: Answer[], totalPoints: number } } = {};
+      answersData.forEach(answer => {
+        if (!teamScores[answer.team_id]) {
+          teamScores[answer.team_id] = { answers: [], totalPoints: 0 };
+        }
+        teamScores[answer.team_id].answers.push(answer);
+        teamScores[answer.team_id].totalPoints += (answer.points || 1);
+      });
+      
+      // Save results for each team
+      const savePromises = Object.entries(teamScores).map(([teamId, data]) => {
+        return upsertSessionResult({
+          session_id: sessionId,
+          team_id: teamId,
+          total_points: data.totalPoints,
+          details: {
+            answers: data.answers.map(a => ({
+              questionId: a.question_id,
+              answer: a.answer,
+              points: a.points || 1,
+              judgeId: a.judge_id,
+              timestamp: a.created_at
+            }))
+          }
+        });
+      });
+      
+      await Promise.all(savePromises);
+      console.log('✅ Session results saved successfully');
+      
+      // Mark session as completed (update with end time)
+      await updateSession(sessionId, {
+        current_team_id: 'completed'
+      });
+      
+      // Clear local state but DON'T delete from database
       localStorage.removeItem('hostSessionId');
       localStorage.removeItem('hostToken');
       
@@ -293,10 +332,10 @@ export default function HostPage() {
       setAnswers({});
       setLeaderboard([]);
       
-      alert('تم إنهاء الجلسة بنجاح');
+      alert(`تم إنهاء الجلسة وحفظ النتائج بنجاح!\nعدد الفرق: ${Object.keys(teamScores).length}\nإجمالي الإجابات: ${answersData.length}`);
     } catch (error) {
       console.error('Error ending session:', error);
-      alert('خطأ في إنهاء الجلسة');
+      alert('خطأ في إنهاء الجلسة: ' + (error as Error).message);
     }
   };
 

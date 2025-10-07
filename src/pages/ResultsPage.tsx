@@ -42,6 +42,8 @@ export default function ResultsPage() {
       
       if (sessionsError) throw sessionsError;
 
+      console.log('📊 Loaded sessions:', sessionsData?.length || 0);
+
       // For each session, fetch answers and judges
       const sessionsWithData = await Promise.all(
         (sessionsData || []).map(async (session) => {
@@ -49,6 +51,8 @@ export default function ResultsPage() {
             getAnswersBySession(session.session_id),
             getJudgesBySession(session.session_id)
           ]);
+          
+          console.log(`Session ${session.session_id}: ${answers.length} answers, ${judges.length} judges`);
           
           return {
             ...session,
@@ -60,10 +64,11 @@ export default function ResultsPage() {
 
       setSessions(sessionsWithData);
       
-      // Auto-expand the first session
-      if (sessionsWithData.length > 0) {
-        setExpandedSessions(new Set([sessionsWithData[0].session_id]));
-      }
+      // Auto-expand all sessions by default
+      const allSessionIds = sessionsWithData.map(s => s.session_id);
+      setExpandedSessions(new Set(allSessionIds));
+      
+      console.log('✅ All sessions loaded and expanded');
     } catch (error) {
       console.error('Error loading sessions:', error);
       alert('خطأ في تحميل الجلسات');
