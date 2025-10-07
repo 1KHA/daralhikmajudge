@@ -87,7 +87,7 @@ export default function ResultsPage() {
     setExpandedSessions(newExpanded);
   };
 
-  const calculateTeamResults = (answers: Answer[], judges: any[]): TeamResult[] => {
+  const calculateTeamResults = (answers: Answer[]): TeamResult[] => {
     const teamScores: { [key: string]: { score: number; answers: Answer[] } } = {};
     
     answers.forEach(answer => {
@@ -167,7 +167,7 @@ export default function ResultsPage() {
       </div>
 
       {sessions.map((session) => {
-        const teamResults = calculateTeamResults(session.answers, session.judges);
+        const teamResults = calculateTeamResults(session.answers);
         const isExpanded = expandedSessions.has(session.session_id);
         const maxScore = teamResults.length > 0 ? teamResults[0].score : 0;
         const avgScore = teamResults.length > 0 

@@ -6,7 +6,6 @@ import {
   getQuestions,
   createSession,
   updateSession,
-  deleteSession,
   getJudgesBySession,
   getAnswersBySession,
   getSessionResults,

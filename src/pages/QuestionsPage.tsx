@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { getQuestionBanks, getQuestions } from '../lib/supabaseService';
-import type { QuestionBank, Question } from '../types';
+import { getQuestions } from '../lib/supabaseService';
+import type { Question } from '../types';
 
 interface Choice {
   text: string;
@@ -23,7 +23,6 @@ interface Section {
 
 export default function QuestionsPage() {
   const navigate = useNavigate();
-  const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>([]);
   const [existingQuestions, setExistingQuestions] = useState<Question[]>([]);
   const [bankName, setBankName] = useState('');
   const [totalPoints, setTotalPoints] = useState(100);
@@ -40,11 +39,7 @@ export default function QuestionsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [banksData, questionsData] = await Promise.all([
-        getQuestionBanks(),
-        getQuestions()
-      ]);
-      setQuestionBanks(banksData);
+      const questionsData = await getQuestions();
       setExistingQuestions(questionsData);
     } catch (error) {
       console.error('Error loading data:', error);
