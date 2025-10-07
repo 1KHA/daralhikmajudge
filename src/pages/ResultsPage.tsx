@@ -294,6 +294,100 @@ export default function ResultsPage() {
             {/* Session Content (Expanded) */}
             {isExpanded && (
               <div style={{ padding: '20px' }}>
+                {/* Top 5 Teams */}
+                {teamResults.length > 0 && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    marginBottom: '20px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <h3 style={{ 
+                      marginBottom: '16px', 
+                      color: 'white',
+                      fontSize: '20px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
+                    }}>
+                      <span>🏆</span>
+                      أفضل 5 فرق
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '12px'
+                    }}>
+                      {teamResults.slice(0, 5).map((team, index) => {
+                        const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+                        const colors = [
+                          'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                          'linear-gradient(135deg, #C0C0C0 0%, #808080 100%)',
+                          'linear-gradient(135deg, #CD7F32 0%, #8B4513 100%)',
+                          'linear-gradient(135deg, #4A90E2 0%, #357ABD 100%)',
+                          'linear-gradient(135deg, #50C878 0%, #3A9B5C 100%)'
+                        ];
+                        
+                        return (
+                          <div key={team.teamName} style={{
+                            background: 'white',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                            border: index < 3 ? '3px solid gold' : '2px solid var(--border-color)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}>
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: '4px',
+                              background: colors[index]
+                            }} />
+                            <div style={{
+                              fontSize: '32px',
+                              marginBottom: '8px',
+                              textAlign: 'center'
+                            }}>
+                              {medals[index]}
+                            </div>
+                            <div style={{
+                              fontSize: '16px',
+                              fontWeight: 600,
+                              color: 'var(--text-primary)',
+                              marginBottom: '8px',
+                              textAlign: 'center',
+                              wordBreak: 'break-word'
+                            }}>
+                              {team.teamName}
+                            </div>
+                            <div style={{
+                              fontSize: '20px',
+                              fontWeight: 700,
+                              color: 'var(--primary-color)',
+                              textAlign: 'center'
+                            }}>
+                              {team.score.toFixed(2)}
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: 'var(--text-secondary)',
+                              textAlign: 'center'
+                            }}>
+                              نقطة
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Statistics */}
                 <div style={{
                   background: 'var(--primary-light)',
