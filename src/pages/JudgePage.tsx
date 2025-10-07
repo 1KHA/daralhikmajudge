@@ -12,6 +12,8 @@ export default function JudgePage() {
   const [currentTeam, setCurrentTeam] = useState<string>('لم يتم اختيار فريق');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: string }>({});
+  const [judgeState, setJudgeState] = useState<'judging' | 'waiting'>('judging');
+  const [submittedCount, setSubmittedCount] = useState<number>(0);
 
   useEffect(() => {
     checkExistingSession();
@@ -163,6 +165,8 @@ export default function JudgePage() {
         setQuestions(payload.payload.questions || []);
         setCurrentTeam(payload.payload.currentTeam || 'لم يتم اختيار فريق');
         setSelectedAnswers({});
+        // Reset to judging state when new questions arrive
+        setJudgeState('judging');
       })
       .subscribe();
 
@@ -317,7 +321,13 @@ export default function JudgePage() {
     }
 
     // All answers are already submitted individually
-    alert('تم إرسال الإجابات بنجاح!');
+    const count = Object.keys(selectedAnswers).length;
+    setSubmittedCount(count);
+    
+    // Transition to waiting state
+    setJudgeState('waiting');
+    
+    console.log(`✅ Submitted ${count} answers, now waiting for next team`);
   };
 
   if (!isLoggedIn) {
@@ -437,7 +447,97 @@ export default function JudgePage() {
           </div>
 
           <div id="questions-container">
-            {questions.length === 0 ? (
+            {judgeState === 'waiting' ? (
+              // Waiting Screen
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                animation: 'fadeIn 0.5s ease-out'
+              }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  padding: '24px',
+                  borderRadius: '16px',
+                  marginBottom: '32px',
+                  boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)'
+                }}>
+                  <div style={{ fontSize: '64px', marginBottom: '16px' }}>✅</div>
+                  <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>
+                    تم إرسال إجاباتك بنجاح!
+                  </h2>
+                  <p style={{ fontSize: '16px', opacity: 0.9 }}>
+                    شكراً لك على مشاركتك في التحكيم
+                  </p>
+                </div>
+
+                <div style={{
+                  background: 'var(--secondary-light)',
+                  padding: '32px',
+                  borderRadius: '12px',
+                  marginBottom: '24px'
+                }}>
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    border: '6px solid var(--primary-color)',
+                    borderTop: '6px solid transparent',
+                    borderRadius: '50%',
+                    margin: '0 auto 24px',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    marginBottom: '12px'
+                  }}>
+                    ⏳ في انتظار الفريق التالي...
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: 'var(--text-secondary)',
+                    marginBottom: '20px'
+                  }}>
+                    سيتم عرض الأسئلة الجديدة تلقائياً عندما يرسلها المضيف
+                  </p>
+                </div>
+
+                <div style={{
+                  background: 'white',
+                  border: '2px solid var(--border-color)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  display: 'inline-block'
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    color: 'var(--text-secondary)',
+                    marginBottom: '8px'
+                  }}>
+                    📊 عدد الإجابات المرسلة
+                  </div>
+                  <div style={{
+                    fontSize: '36px',
+                    fontWeight: 700,
+                    color: 'var(--primary-color)'
+                  }}>
+                    {submittedCount}
+                  </div>
+                </div>
+
+                <style>{`
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                  @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                `}</style>
+              </div>
+            ) : questions.length === 0 ? (
               <div className="empty-state">في انتظار الأسئلة...</div>
             ) : (
               questions.map((question, index) => (
@@ -537,7 +637,7 @@ export default function JudgePage() {
             )}
           </div>
 
-          {questions.length > 0 && (
+          {questions.length > 0 && judgeState === 'judging' && (
             <button
               className="btn btn-success"
               onClick={handleSubmitFinal}
