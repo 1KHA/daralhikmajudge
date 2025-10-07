@@ -231,10 +231,10 @@ export default function QuestionsPage() {
 
       if (bankError) throw bankError;
 
-      // Prepare questions for insertion
+      // Prepare questions for insertion with choice weights
       const questionsToInsert: Array<{
         text: string;
-        choices: string[];
+        choices: Array<{text: string; weight: number}>;
         section: string;
         weight: number;
         bank_id: string;
@@ -243,7 +243,10 @@ export default function QuestionsPage() {
         section.questions.forEach(question => {
           questionsToInsert.push({
             text: question.text,
-            choices: question.choices.map(c => c.text),
+            choices: question.choices.map(c => ({
+              text: c.text,
+              weight: c.weight
+            })),
             section: section.name,
             weight: section.weight,
             bank_id: bank.id
@@ -361,21 +364,39 @@ export default function QuestionsPage() {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                     gap: '8px'
                   }}>
-                    {question.choices.map((choice, idx) => (
-                      <div key={idx} style={{
-                        padding: '8px 12px',
-                        background: 'white',
-                        border: '2px solid var(--border-color)',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>•</span>
-                        {choice}
-                      </div>
-                    ))}
+                    {question.choices.map((choice, idx) => {
+                      const choiceText = typeof choice === 'string' ? choice : choice.text;
+                      const choiceWeight = typeof choice === 'string' ? 1 : choice.weight;
+                      return (
+                        <div key={idx} style={{
+                          padding: '8px 12px',
+                          background: 'white',
+                          border: '2px solid var(--border-color)',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>•</span>
+                            <span>{choiceText}</span>
+                          </div>
+                          {typeof choice !== 'string' && (
+                            <span style={{ 
+                              fontSize: '12px', 
+                              color: 'var(--text-secondary)',
+                              background: 'var(--secondary-light)',
+                              padding: '2px 8px',
+                              borderRadius: '4px'
+                            }}>
+                              وزن: {choiceWeight}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-secondary)' }}>

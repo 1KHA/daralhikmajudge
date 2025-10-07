@@ -11,10 +11,15 @@ export interface QuestionBank {
   questions?: Question[];
 }
 
+export interface QuestionChoice {
+  text: string;
+  weight: number;
+}
+
 export interface Question {
   id: string;
   text: string;
-  choices: string[];
+  choices: string[] | QuestionChoice[]; // Support both formats for backward compatibility
   section: string;
   weight: number;
   bank_id?: string;

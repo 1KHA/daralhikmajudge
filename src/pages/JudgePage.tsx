@@ -245,21 +245,63 @@ export default function JudgePage() {
     }
   };
 
+  const calculatePoints = (question: Question, selectedAnswer: string): number => {
+    // Find the question
+    const choices = question.choices;
+    
+    // Handle both string[] and QuestionChoice[] formats
+    let selectedWeight = 1;
+    let maxWeight = 1;
+    
+    if (choices.length > 0 && typeof choices[0] === 'object') {
+      // New format with weights
+      const choiceObjects = choices as Array<{text: string; weight: number}>;
+      const selectedChoice = choiceObjects.find(c => c.text === selectedAnswer);
+      selectedWeight = selectedChoice?.weight || 0;
+      maxWeight = Math.max(...choiceObjects.map(c => c.weight));
+    } else {
+      // Old format - all choices have equal weight
+      selectedWeight = 1;
+      maxWeight = 1;
+    }
+    
+    // Apply the formula: points = (selectedOptionWeight / maxOptionWeight) * questionWeight
+    const questionWeight = question.weight || 1;
+    const points = (selectedWeight / maxWeight) * questionWeight;
+    
+    return Number(points.toFixed(2));
+  };
+
   const handleAnswerSelect = async (questionId: string, answer: string) => {
     setSelectedAnswers(prev => ({
       ...prev,
       [questionId]: answer
     }));
 
-    // Submit answer immediately
+    // Find the question to calculate points
+    const question = questions.find(q => q.id === questionId);
+    if (!question) {
+      console.error('Question not found:', questionId);
+      return;
+    }
+
+    // Calculate points using the formula
+    const points = calculatePoints(question, answer);
+    
+    console.log(`Calculated points for answer "${answer}":`, points);
+
+    // Submit answer immediately with calculated points
     try {
       await submitAnswer({
         answer,
+        points,
         question_id: questionId,
         team_id: currentTeam,
         judge_id: judgeId,
         session_id: sessionId
       });
+      
+      console.log('✅ Answer submitted with points:', points);
     } catch (error) {
       console.error('Error submitting answer:', error);
     }
@@ -430,47 +472,62 @@ export default function JudgePage() {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                     gap: '12px'
                   }}>
-                    {question.choices.map((choice, choiceIdx) => (
-                      <button
-                        key={choiceIdx}
-                        className={`answer-btn ${selectedAnswers[question.id] === choice ? 'selected' : ''}`}
-                        onClick={() => handleAnswerSelect(question.id, choice)}
-                        disabled={selectedAnswers[question.id] === choice}
-                        style={{
-                          padding: '14px 20px',
-                          background: selectedAnswers[question.id] === choice ? 'var(--primary-color)' : 'white',
-                          color: selectedAnswers[question.id] === choice ? 'white' : 'var(--text-primary)',
-                          border: `2px solid ${selectedAnswers[question.id] === choice ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '16px',
-                          fontWeight: 500,
-                          textAlign: 'center',
-                          position: 'relative',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {choice}
-                        {selectedAnswers[question.id] === choice && (
-                          <span style={{
-                            position: 'absolute',
-                            top: '8px',
-                            left: '8px',
-                            background: 'white',
-                            color: 'var(--primary-color)',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold'
-                          }}>
-                            ✓
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                    {question.choices.map((choice, choiceIdx) => {
+                      const choiceText = typeof choice === 'string' ? choice : choice.text;
+                      const choiceWeight = typeof choice === 'string' ? 1 : choice.weight;
+                      const isSelected = selectedAnswers[question.id] === choiceText;
+                      
+                      return (
+                        <button
+                          key={choiceIdx}
+                          className={`answer-btn ${isSelected ? 'selected' : ''}`}
+                          onClick={() => handleAnswerSelect(question.id, choiceText)}
+                          disabled={isSelected}
+                          style={{
+                            padding: '14px 20px',
+                            background: isSelected ? 'var(--primary-color)' : 'white',
+                            color: isSelected ? 'white' : 'var(--text-primary)',
+                            border: `2px solid ${isSelected ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            fontWeight: 500,
+                            textAlign: 'center',
+                            position: 'relative',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div>{choiceText}</div>
+                          {typeof choice !== 'string' && (
+                            <div style={{
+                              fontSize: '11px',
+                              marginTop: '4px',
+                              opacity: 0.8
+                            }}>
+                              وزن: {choiceWeight}
+                            </div>
+                          )}
+                          {isSelected && (
+                            <span style={{
+                              position: 'absolute',
+                              top: '8px',
+                              left: '8px',
+                              background: 'white',
+                              color: 'var(--primary-color)',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 'bold'
+                            }}>
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))
