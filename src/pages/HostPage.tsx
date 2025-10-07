@@ -185,15 +185,15 @@ export default function HostPage() {
     try {
       const answersData = await getAnswersBySession(sessionId);
       
-      // Count answers per team
+      // Calculate weighted scores per team using answer.points
       const teamScores: { [key: string]: number } = {};
       answersData.forEach(answer => {
         const teamName = answer.team_id;
         if (!teamScores[teamName]) {
           teamScores[teamName] = 0;
         }
-        // Each answer counts as 1 point for now (you can adjust scoring logic)
-        teamScores[teamName] += 1;
+        // Use the weighted points from the answer (calculated by judge page)
+        teamScores[teamName] += (answer.points || 1);
       });
       
       // Convert to leaderboard format and sort
@@ -205,7 +205,7 @@ export default function HostPage() {
         .sort((a, b) => b.totalPoints - a.totalPoints);
       
       setLeaderboard(leaderboardData);
-      console.log('Leaderboard calculated from answers:', leaderboardData);
+      console.log('Real-time leaderboard calculated with weighted points:', leaderboardData);
     } catch (error) {
       console.error('Error calculating leaderboard:', error);
     }
