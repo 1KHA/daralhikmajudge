@@ -7,7 +7,6 @@ export default function JudgePage() {
   const [sessionId, setSessionId] = useState<string>('لم تبدأ');
   const [judgeName, setJudgeName] = useState<string>('');
   const [judgeId, setJudgeId] = useState<string>('');
-  const [judgeToken, setJudgeToken] = useState<string>('');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   
   const [currentTeam, setCurrentTeam] = useState<string>('لم يتم اختيار فريق');
@@ -137,7 +136,6 @@ export default function JudgePage() {
       if (judge && judge.session_id === sessionId) {
         setSessionId(sessionId);
         setJudgeName(name);
-        setJudgeToken(token);
         setJudgeId(judge.id);
         setIsLoggedIn(true);
       } else {
@@ -230,7 +228,6 @@ export default function JudgePage() {
       console.log('Judge created successfully:', judge);
 
       setJudgeId(judge.id);
-      setJudgeToken(newJudgeToken);
       setSessionId(latestSession.session_id);
       setIsLoggedIn(true);
 

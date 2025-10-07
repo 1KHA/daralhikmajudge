@@ -15,7 +15,6 @@ import type { Team, Question, QuestionBank, Judge, LeaderboardEntry, AnswersByTe
 
 export default function HostPage() {
   const [sessionId, setSessionId] = useState<string>('لم تبدأ');
-  const [hostToken, setHostToken] = useState<string>('');
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [currentTeam, setCurrentTeam] = useState<string>('لا يوجد');
@@ -61,7 +60,6 @@ export default function HostPage() {
     
     if (savedSessionId && savedHostToken) {
       setSessionId(savedSessionId);
-      setHostToken(savedHostToken);
       subscribeToSession(savedSessionId);
       // Load initial judges
       await loadJudges(savedSessionId);
@@ -232,7 +230,6 @@ export default function HostPage() {
       });
 
       setSessionId(session.session_id);
-      setHostToken(newHostToken);
       setCurrentTeam(selectedTeams[0]);
       setCurrentTeamIndex(0);
 
@@ -290,7 +287,6 @@ export default function HostPage() {
       localStorage.removeItem('hostToken');
       
       setSessionId('لم تبدأ');
-      setHostToken('');
       setCurrentTeam('لا يوجد');
       setSelectedTeams([]);
       setJudges([]);
