@@ -96,25 +96,28 @@ export default function JudgePage() {
   }, [isLoggedIn, sessionId]);
 
   const startSessionValidation = () => {
-    // Poll every 3 seconds to check if session still exists
+    // Poll every 2 seconds to check if session still exists
     const interval = setInterval(async () => {
       if (isLoggedIn && sessionId !== 'لم تبدأ') {
         try {
           const { data, error } = await supabase
             .from('sessions')
-            .select('session_id')
+            .select('session_id, current_team_id')
             .eq('session_id', sessionId)
             .single();
           
-          if (error || !data) {
-            console.log('Session no longer exists, logging out...');
+          // Check if session was deleted or marked as completed
+          if (error || !data || data.current_team_id === 'completed') {
+            console.log('Session ended or completed, logging out...');
             handleSessionEnd();
           }
         } catch (error) {
           console.error('Session validation error:', error);
+          // If there's an error fetching the session, it likely doesn't exist
+          handleSessionEnd();
         }
       }
-    }, 3000);
+    }, 2000);
     
     return interval;
   };
