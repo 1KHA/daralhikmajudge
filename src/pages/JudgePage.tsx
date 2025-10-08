@@ -133,6 +133,30 @@ export default function JudgePage() {
     }
   };
 
+  const loadPreviousAnswers = async (judgeId: string, sessionId: string, currentTeamId: string) => {
+    try {
+      const { data: answers, error } = await supabase
+        .from('answers')
+        .select('question_id, answer')
+        .eq('judge_id', judgeId)
+        .eq('session_id', sessionId)
+        .eq('team_id', currentTeamId);
+      
+      if (error) throw error;
+      
+      if (answers && answers.length > 0) {
+        const answersMap: { [key: string]: string } = {};
+        answers.forEach(a => {
+          answersMap[a.question_id] = a.answer;
+        });
+        setSelectedAnswers(answersMap);
+        console.log('✅ Loaded previous answers:', answers.length);
+      }
+    } catch (error) {
+      console.error('Error loading previous answers:', error);
+    }
+  };
+
   const loadCurrentQuestions = async (sessionId: string) => {
     try {
       const { data: session, error } = await supabase
@@ -145,8 +169,18 @@ export default function JudgePage() {
       
       if (session?.current_questions && session.current_questions.length > 0) {
         setQuestions(session.current_questions);
-        setCurrentTeam(session.current_team_id || 'لم يتم اختيار فريق');
+        
+        // Set team name - current_team_id should contain the team name
+        const teamName = session.current_team_id || 'لم يتم اختيار فريق';
+        setCurrentTeam(teamName);
+        
         console.log('✅ Loaded current questions on rejoin:', session.current_questions.length);
+        console.log('✅ Current team:', teamName);
+        
+        // Load previous answers for this team
+        if (judgeId && teamName !== 'لم يتم اختيار فريق') {
+          await loadPreviousAnswers(judgeId, sessionId, teamName);
+        }
       } else {
         console.log('ℹ️ No current questions in session');
       }
@@ -304,6 +338,13 @@ export default function JudgePage() {
   };
 
   const handleAnswerSelect = async (questionId: string, answer: string) => {
+    // Check if already answered this question
+    if (selectedAnswers[questionId]) {
+      console.log('⚠️ Question already answered, skipping duplicate submission');
+      return;
+    }
+
+    // Update local state first
     setSelectedAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -335,6 +376,12 @@ export default function JudgePage() {
       console.log('✅ Answer submitted with points:', points);
     } catch (error) {
       console.error('Error submitting answer:', error);
+      // Revert local state on error
+      setSelectedAnswers(prev => {
+        const newState = { ...prev };
+        delete newState[questionId];
+        return newState;
+      });
     }
   };
 
