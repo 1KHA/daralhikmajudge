@@ -338,9 +338,11 @@ export default function JudgePage() {
   };
 
   const handleAnswerSelect = async (questionId: string, answer: string) => {
-    // Check if already answered this question
-    if (selectedAnswers[questionId]) {
-      console.log('⚠️ Question already answered, skipping duplicate submission');
+    const previousAnswer = selectedAnswers[questionId];
+    
+    // If clicking the same answer, do nothing
+    if (previousAnswer === answer) {
+      console.log('ℹ️ Same answer selected, no change needed');
       return;
     }
 
@@ -360,10 +362,28 @@ export default function JudgePage() {
     // Calculate points using the formula
     const points = calculatePoints(question, answer);
     
-    console.log(`Calculated points for answer "${answer}":`, points);
-
-    // Submit answer immediately with calculated points
     try {
+      // If there was a previous answer, delete it first
+      if (previousAnswer) {
+        console.log(`🔄 Changing answer from "${previousAnswer}" to "${answer}"`);
+        
+        const { error: deleteError } = await supabase
+          .from('answers')
+          .delete()
+          .eq('judge_id', judgeId)
+          .eq('question_id', questionId)
+          .eq('team_id', currentTeam)
+          .eq('session_id', sessionId);
+        
+        if (deleteError) {
+          console.error('Error deleting old answer:', deleteError);
+          throw deleteError;
+        }
+        
+        console.log('✅ Old answer deleted');
+      }
+
+      // Submit new answer with calculated points
       await submitAnswer({
         answer,
         points,
@@ -373,14 +393,20 @@ export default function JudgePage() {
         session_id: sessionId
       });
       
-      console.log('✅ Answer submitted with points:', points);
+      console.log(`✅ New answer submitted with points: ${points}`);
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error updating answer:', error);
       // Revert local state on error
       setSelectedAnswers(prev => {
-        const newState = { ...prev };
-        delete newState[questionId];
-        return newState;
+        if (previousAnswer) {
+          // Restore previous answer
+          return { ...prev, [questionId]: previousAnswer };
+        } else {
+          // Remove the failed answer
+          const newState = { ...prev };
+          delete newState[questionId];
+          return newState;
+        }
       });
     }
   };
@@ -630,7 +656,6 @@ export default function JudgePage() {
                           key={choiceIdx}
                           className={`answer-btn ${isSelected ? 'selected' : ''}`}
                           onClick={() => handleAnswerSelect(question.id, choiceText)}
-                          disabled={isSelected}
                           style={{
                             padding: '14px 20px',
                             background: isSelected ? 'var(--primary-color)' : 'white',
@@ -642,7 +667,8 @@ export default function JudgePage() {
                             fontWeight: 500,
                             textAlign: 'center',
                             position: 'relative',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            opacity: isSelected ? 1 : 0.9
                           }}
                         >
                           <div>{choiceText}</div>
