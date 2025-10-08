@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { createJudge, getJudge, submitAnswer, getLatestSession } from '../lib/supabaseService';
+import { getOrCreateJudge, getJudge, submitAnswer, getLatestSession } from '../lib/supabaseService';
 import type { Question } from '../types';
 
 export default function JudgePage() {
@@ -225,13 +225,13 @@ export default function JudgePage() {
         session_id: latestSession.session_id
       });
       
-      const judge = await createJudge({
+      const judge = await getOrCreateJudge({
         name: judgeName,
         judge_token: newJudgeToken,
         session_id: latestSession.session_id
       });
 
-      console.log('Judge created successfully:', judge);
+      console.log('Judge joined successfully:', judge);
 
       setJudgeId(judge.id);
       setSessionId(latestSession.session_id);

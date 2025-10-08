@@ -135,6 +135,40 @@ export const createJudge = async (judgeData: {
   return data;
 };
 
+export const getOrCreateJudge = async (judgeData: {
+  name: string;
+  judge_token: string;
+  session_id: string;
+}): Promise<Judge> => {
+  // First, try to find existing judge by name + session
+  const { data: existing, error: findError } = await supabase
+    .from('judges')
+    .select('*')
+    .eq('name', judgeData.name)
+    .eq('session_id', judgeData.session_id)
+    .maybeSingle();
+  
+  if (findError) throw findError;
+  
+  if (existing) {
+    // Judge exists - update token and return
+    const { data: updated, error: updateError } = await supabase
+      .from('judges')
+      .update({ judge_token: judgeData.judge_token })
+      .eq('id', existing.id)
+      .select()
+      .single();
+    
+    if (updateError) throw updateError;
+    console.log('✅ Reusing existing judge:', existing.name);
+    return updated;
+  }
+  
+  // Judge doesn't exist - create new
+  console.log('✅ Creating new judge:', judgeData.name);
+  return createJudge(judgeData);
+};
+
 export const getJudgesBySession = async (sessionId: string): Promise<Judge[]> => {
   const { data, error } = await supabase
     .from('judges')
