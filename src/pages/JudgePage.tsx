@@ -133,6 +133,28 @@ export default function JudgePage() {
     }
   };
 
+  const loadCurrentQuestions = async (sessionId: string) => {
+    try {
+      const { data: session, error } = await supabase
+        .from('sessions')
+        .select('current_questions, current_team_id')
+        .eq('session_id', sessionId)
+        .single();
+      
+      if (error) throw error;
+      
+      if (session?.current_questions && session.current_questions.length > 0) {
+        setQuestions(session.current_questions);
+        setCurrentTeam(session.current_team_id || 'لم يتم اختيار فريق');
+        console.log('✅ Loaded current questions on rejoin:', session.current_questions.length);
+      } else {
+        console.log('ℹ️ No current questions in session');
+      }
+    } catch (error) {
+      console.error('Error loading current questions:', error);
+    }
+  };
+
   const attemptRejoin = async (sessionId: string, name: string, token: string) => {
     try {
       const judge = await getJudge(name, token);
@@ -142,6 +164,9 @@ export default function JudgePage() {
         setJudgeName(name);
         setJudgeId(judge.id);
         setIsLoggedIn(true);
+        
+        // Load current questions from session if available
+        await loadCurrentQuestions(sessionId);
       } else {
         // Clear invalid session
         localStorage.removeItem('judgeSessionId');
