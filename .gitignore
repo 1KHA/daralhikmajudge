@@ -39,3 +39,4 @@ plan.md
 supabase-schema.sql 
 
 migrate.js 
+insert-teams.sql 
