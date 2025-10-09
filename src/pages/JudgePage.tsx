@@ -412,18 +412,27 @@ export default function JudgePage() {
   };
 
   const handleSubmitFinal = async () => {
-    if (Object.keys(selectedAnswers).length === 0) {
-      alert('يرجى الإجابة على سؤال واحد على الأقل');
+    const totalQuestions = questions.length;
+    const answeredQuestions = Object.keys(selectedAnswers).length;
+    
+    // Check if no questions answered
+    if (answeredQuestions === 0) {
+      alert('يرجى الإجابة على جميع الأسئلة');
+      return;
+    }
+    
+    // Check if all questions are answered
+    if (answeredQuestions < totalQuestions) {
+      const unansweredCount = totalQuestions - answeredQuestions;
+      alert(`يرجى الإجابة على جميع الأسئلة\nتم الإجابة على ${answeredQuestions} من ${totalQuestions}\nمتبقي ${unansweredCount} سؤال`);
       return;
     }
 
     // All answers are already submitted individually
-    const count = Object.keys(selectedAnswers).length;
-    
     // Transition to waiting state
     setJudgeState('waiting');
     
-    console.log(`✅ Submitted ${count} answers, now waiting for next team`);
+    console.log(`✅ Submitted ${answeredQuestions} answers (all questions), now waiting for next team`);
   };
 
   if (!isLoggedIn) {
@@ -709,21 +718,66 @@ export default function JudgePage() {
           </div>
 
           {questions.length > 0 && judgeState === 'judging' && (
-            <button
-              className="btn btn-success"
-              onClick={handleSubmitFinal}
-              style={{
-                marginTop: '32px',
-                background: 'linear-gradient(135deg, var(--success-color), #059669)',
-                fontSize: '18px',
-                padding: '16px 40px',
-                boxShadow: 'var(--shadow-lg)',
-                width: '100%'
-              }}
-            >
-              <span>📤</span>
-              إرسال الإجابات النهائية
-            </button>
+            <>
+              {/* Progress Indicator */}
+              <div style={{
+                marginTop: '24px',
+                padding: '16px',
+                background: Object.keys(selectedAnswers).length === questions.length 
+                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                  : 'var(--secondary-light)',
+                borderRadius: '12px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: Object.keys(selectedAnswers).length === questions.length 
+                    ? 'white'
+                    : 'var(--text-secondary)',
+                  marginBottom: '8px'
+                }}>
+                  {Object.keys(selectedAnswers).length === questions.length 
+                    ? '✅ تم الإجابة على جميع الأسئلة'
+                    : `تم الإجابة على ${Object.keys(selectedAnswers).length} من ${questions.length} أسئلة`
+                  }
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '8px',
+                  background: 'rgba(0,0,0,0.1)',
+                  borderRadius: '4px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${(Object.keys(selectedAnswers).length / questions.length) * 100}%`,
+                    height: '100%',
+                    background: Object.keys(selectedAnswers).length === questions.length 
+                      ? 'white'
+                      : 'var(--primary-color)',
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+              </div>
+
+              <button
+                className="btn btn-success"
+                onClick={handleSubmitFinal}
+                style={{
+                  marginTop: '16px',
+                  background: 'linear-gradient(135deg, var(--success-color), #059669)',
+                  fontSize: '18px',
+                  padding: '16px 40px',
+                  boxShadow: 'var(--shadow-lg)',
+                  width: '100%',
+                  opacity: Object.keys(selectedAnswers).length === questions.length ? 1 : 0.7,
+                  cursor: Object.keys(selectedAnswers).length === questions.length ? 'pointer' : 'not-allowed'
+                }}
+              >
+                <span>📤</span>
+                إرسال الإجابات النهائية
+              </button>
+            </>
           )}
         </div>
       </div>
