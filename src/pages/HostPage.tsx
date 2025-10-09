@@ -483,13 +483,33 @@ export default function HostPage() {
     }
   };
 
-  const handleMoveTeam = (fromIndex: number, toIndex: number) => {
+  const handleMoveTeam = async (fromIndex: number, toIndex: number) => {
     if (toIndex < 0 || toIndex >= teams.length) return;
     
     const newTeams = [...teams];
     const [movedTeam] = newTeams.splice(fromIndex, 1);
     newTeams.splice(toIndex, 0, movedTeam);
+    
+    // Update UI immediately
     setTeams(newTeams);
+    
+    // Save new order to database
+    try {
+      const updates = newTeams.map((team, index) => 
+        supabase
+          .from('teams')
+          .update({ display_order: index })
+          .eq('id', team.id)
+      );
+      
+      await Promise.all(updates);
+      console.log('✅ Team order saved to database');
+    } catch (error) {
+      console.error('Error saving team order:', error);
+      alert('خطأ في حفظ ترتيب الفرق');
+      // Reload to restore correct order
+      await loadInitialData();
+    }
   };
 
   const toggleTeamSelection = (teamName: string) => {

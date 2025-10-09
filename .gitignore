@@ -40,3 +40,4 @@ supabase-schema.sql
 
 migrate.js 
 insert-teams.sql 
+*.sql 

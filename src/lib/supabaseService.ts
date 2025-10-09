@@ -6,7 +6,8 @@ export const getTeams = async (): Promise<Team[]> => {
   const { data, error } = await supabase
     .from('teams')
     .select('*')
-    .order('name');
+    .order('display_order', { ascending: true })
+    .order('name', { ascending: true });
   
   if (error) throw error;
   return data || [];

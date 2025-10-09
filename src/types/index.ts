@@ -1,6 +1,7 @@
 export interface Team {
   id: string;
   name: string;
+  display_order?: number;
   created_at?: string;
 }
 
