@@ -3,6 +3,19 @@ import { supabase } from '../lib/supabase';
 import { getOrCreateJudge, getJudge, submitAnswer, getLatestSession } from '../lib/supabaseService';
 import type { Question } from '../types';
 
+// Predefined list of judge names
+const JUDGE_NAMES = [
+  'م. أحمد',
+  'أ. مشعل',
+  'أ. همام',
+  'أ. سدير',
+  'أ. حنين',
+  'أ.د. نورة',
+  'د. فريدة',
+  'د. علي',
+  'د. هشام'
+];
+
 export default function JudgePage() {
   const [sessionId, setSessionId] = useState<string>('لم تبدأ');
   const [judgeName, setJudgeName] = useState<string>('');
@@ -500,22 +513,27 @@ export default function JudgePage() {
                 color: 'var(--text-secondary)',
                 fontSize: '14px'
               }}>
-                اسمك الكامل
+                اختر اسمك
               </label>
-              <input
-                type="text"
+              <select
                 value={judgeName}
                 onChange={(e) => setJudgeName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleJoinGame()}
-                placeholder="أدخل اسمك هنا"
                 style={{
                   width: '100%',
                   padding: '12px 16px',
                   border: '2px solid var(--border-color)',
                   borderRadius: '8px',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  background: 'white',
+                  cursor: 'pointer',
+                  color: judgeName ? 'var(--text-primary)' : 'var(--text-secondary)'
                 }}
-              />
+              >
+                <option value="" disabled>-- اختر اسمك من القائمة --</option>
+                {JUDGE_NAMES.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
 
             <button className="btn btn-primary" onClick={handleJoinGame} style={{ width: '100%' }}>
