@@ -157,7 +157,7 @@ export default function JudgePage() {
     }
   };
 
-  const loadCurrentQuestions = async (sessionId: string) => {
+  const loadCurrentQuestions = async (sessionId: string, judgeIdParam?: string) => {
     try {
       const { data: session, error } = await supabase
         .from('sessions')
@@ -178,8 +178,10 @@ export default function JudgePage() {
         console.log('✅ Current team:', teamName);
         
         // Load previous answers for this team
-        if (judgeId && teamName !== 'لم يتم اختيار فريق') {
-          await loadPreviousAnswers(judgeId, sessionId, teamName);
+        // Use parameter if provided, otherwise fall back to state
+        const effectiveJudgeId = judgeIdParam || judgeId;
+        if (effectiveJudgeId && teamName !== 'لم يتم اختيار فريق') {
+          await loadPreviousAnswers(effectiveJudgeId, sessionId, teamName);
         }
       } else {
         console.log('ℹ️ No current questions in session');
@@ -200,7 +202,8 @@ export default function JudgePage() {
         setIsLoggedIn(true);
         
         // Load current questions from session if available
-        await loadCurrentQuestions(sessionId);
+        // Pass judge.id directly to avoid race condition with state update
+        await loadCurrentQuestions(sessionId, judge.id);
       } else {
         // Clear invalid session
         localStorage.removeItem('judgeSessionId');
