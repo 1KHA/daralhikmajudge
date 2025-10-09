@@ -41,6 +41,14 @@ export default function HostPage() {
     checkExistingSession();
   }, []);
 
+  // Recalculate judge submissions when team or questions change
+  useEffect(() => {
+    if (sessionId !== 'لم تبدأ' && currentTeam !== 'لا يوجد') {
+      console.log('🔄 Recalculating submissions for team:', currentTeam);
+      loadAnswers(sessionId);
+    }
+  }, [currentTeam, selectedQuestions.length, sessionId]);
+
   const loadInitialData = async () => {
     try {
       const [teamsData, banksData, questionsData] = await Promise.all([
