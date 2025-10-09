@@ -368,12 +368,21 @@ export default function HostPage() {
       return;
     }
 
+    if (currentTeam === 'لا يوجد') {
+      alert('يرجى اختيار فريق أولاً');
+      return;
+    }
+
     try {
       const questionsToSend = questions.filter(q => selectedQuestions.includes(q.id));
       
+      // Update session with BOTH questions AND current team
       await updateSession(sessionId, {
-        current_questions: questionsToSend
+        current_questions: questionsToSend,
+        current_team_id: currentTeam  // Save current team to database
       });
+
+      console.log('✅ Session updated with questions and team:', currentTeam);
 
       // Broadcast to judges via Supabase Realtime
       const channel = supabase.channel(`session-${sessionId}`, {
@@ -401,7 +410,7 @@ export default function HostPage() {
         }
       });
 
-      console.log('Questions broadcasted successfully');
+      console.log('✅ Questions broadcasted successfully with team:', currentTeam);
       alert('تم إرسال الأسئلة بنجاح');
       
       // Unsubscribe after sending
