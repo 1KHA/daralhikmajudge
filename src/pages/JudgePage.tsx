@@ -28,12 +28,6 @@ export default function JudgePage() {
   const [judgeState, setJudgeState] = useState<'judging' | 'waiting'>('judging');
 
   useEffect(() => {
-    // Restore team name from localStorage if available
-    const savedTeam = localStorage.getItem('currentTeam');
-    if (savedTeam && savedTeam !== 'لم يتم اختيار فريق') {
-      setCurrentTeam(savedTeam);
-    }
-    
     checkExistingSession();
     fetchLatestSessionId();
     subscribeToSessionChanges();
@@ -115,6 +109,15 @@ export default function JudgePage() {
     }
   }, [isLoggedIn, sessionId]);
 
+  // Auto-save team name whenever it changes
+  useEffect(() => {
+    if (currentTeam !== 'لم يتم اختيار فريق' && sessionId !== 'لم تبدأ' && isLoggedIn) {
+      localStorage.setItem('currentTeam', currentTeam);
+      localStorage.setItem(`currentTeam_${sessionId}`, currentTeam);
+      console.log('🔄 Auto-saved team name:', currentTeam);
+    }
+  }, [currentTeam, sessionId, isLoggedIn]);
+
   const startSessionValidation = () => {
     // Poll every 2 seconds to check if session still exists
     const interval = setInterval(async () => {
@@ -186,29 +189,31 @@ export default function JudgePage() {
       
       if (error) throw error;
       
-      if (session?.current_questions && session.current_questions.length > 0) {
-        setQuestions(session.current_questions);
-        
-        // Set team name - current_team_id should contain the team name
+      if (session) {
+        // ALWAYS set team name first, regardless of questions
         const teamName = session.current_team_id || 'لم يتم اختيار فريق';
-        setCurrentTeam(teamName);
-        
-        // Save to localStorage as backup
         if (teamName !== 'لم يتم اختيار فريق') {
+          setCurrentTeam(teamName);
+          // Save to both general and session-specific localStorage
           localStorage.setItem('currentTeam', teamName);
+          localStorage.setItem(`currentTeam_${sessionId}`, teamName);
+          console.log('✅ Team name set and saved:', teamName);
         }
         
-        console.log('✅ Loaded current questions on rejoin:', session.current_questions.length);
-        console.log('✅ Current team:', teamName);
-        
-        // Load previous answers for this team
-        // Use parameter if provided, otherwise fall back to state
-        const effectiveJudgeId = judgeIdParam || judgeId;
-        if (effectiveJudgeId && teamName !== 'لم يتم اختيار فريق') {
-          await loadPreviousAnswers(effectiveJudgeId, sessionId, teamName);
+        // Then handle questions if they exist
+        if (session.current_questions && session.current_questions.length > 0) {
+          setQuestions(session.current_questions);
+          console.log('✅ Loaded current questions on rejoin:', session.current_questions.length);
+          
+          // Load previous answers for this team
+          // Use parameter if provided, otherwise fall back to state
+          const effectiveJudgeId = judgeIdParam || judgeId;
+          if (effectiveJudgeId && teamName !== 'لم يتم اختيار فريق') {
+            await loadPreviousAnswers(effectiveJudgeId, sessionId, teamName);
+          }
+        } else {
+          console.log('ℹ️ No current questions in session yet');
         }
-      } else {
-        console.log('ℹ️ No current questions in session');
       }
     } catch (error) {
       console.error('Error loading current questions:', error);
@@ -254,8 +259,16 @@ export default function JudgePage() {
         if (newTeam && newTeam !== 'لم يتم اختيار فريق') {
           setCurrentTeam(newTeam);
           localStorage.setItem('currentTeam', newTeam);
+          localStorage.setItem(`currentTeam_${sessionId}`, newTeam);
+          console.log('✅ Team updated from broadcast:', newTeam);
+        } else {
+          // Keep existing team - restore from localStorage if needed
+          const savedTeam = localStorage.getItem(`currentTeam_${sessionId}`);
+          if (savedTeam && savedTeam !== 'لم يتم اختيار فريق') {
+            console.log('⚠️ Broadcast had no team, restoring from localStorage:', savedTeam);
+            setCurrentTeam(savedTeam);
+          }
         }
-        // Otherwise keep the existing team name
         
         setSelectedAnswers({});
         // Reset to judging state when new questions arrive
@@ -281,9 +294,15 @@ export default function JudgePage() {
   };
 
   const handleSessionEnd = () => {
+    // Clean up session-specific data
+    if (sessionId !== 'لم تبدأ') {
+      localStorage.removeItem(`currentTeam_${sessionId}`);
+    }
+    
     localStorage.removeItem('judgeSessionId');
     localStorage.removeItem('judgeName');
     localStorage.removeItem('judgeToken');
+    localStorage.removeItem('currentTeam');
     
     setSessionId('لم تبدأ');
     setIsLoggedIn(false);
