@@ -28,6 +28,12 @@ export default function JudgePage() {
   const [judgeState, setJudgeState] = useState<'judging' | 'waiting'>('judging');
 
   useEffect(() => {
+    // Restore team name from localStorage if available
+    const savedTeam = localStorage.getItem('currentTeam');
+    if (savedTeam && savedTeam !== 'لم يتم اختيار فريق') {
+      setCurrentTeam(savedTeam);
+    }
+    
     checkExistingSession();
     fetchLatestSessionId();
     subscribeToSessionChanges();
@@ -187,6 +193,11 @@ export default function JudgePage() {
         const teamName = session.current_team_id || 'لم يتم اختيار فريق';
         setCurrentTeam(teamName);
         
+        // Save to localStorage as backup
+        if (teamName !== 'لم يتم اختيار فريق') {
+          localStorage.setItem('currentTeam', teamName);
+        }
+        
         console.log('✅ Loaded current questions on rejoin:', session.current_questions.length);
         console.log('✅ Current team:', teamName);
         
@@ -237,7 +248,15 @@ export default function JudgePage() {
       .on('broadcast', { event: 'new-questions' }, (payload: any) => {
         console.log('Received questions:', payload);
         setQuestions(payload.payload.questions || []);
-        setCurrentTeam(payload.payload.currentTeam || 'لم يتم اختيار فريق');
+        
+        // Only update team if payload has a valid team name
+        const newTeam = payload.payload.currentTeam;
+        if (newTeam && newTeam !== 'لم يتم اختيار فريق') {
+          setCurrentTeam(newTeam);
+          localStorage.setItem('currentTeam', newTeam);
+        }
+        // Otherwise keep the existing team name
+        
         setSelectedAnswers({});
         // Reset to judging state when new questions arrive
         setJudgeState('judging');
