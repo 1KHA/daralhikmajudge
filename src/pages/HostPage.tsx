@@ -28,6 +28,11 @@ export default function HostPage() {
   const [judges, setJudges] = useState<Judge[]>([]);
   const [answers, setAnswers] = useState<AnswersByTeam>({});
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  
+  // Team management state
+  const [newTeamName, setNewTeamName] = useState<string>('');
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editingTeamName, setEditingTeamName] = useState<string>('');
 
   // Load initial data
   useEffect(() => {
@@ -395,6 +400,116 @@ export default function HostPage() {
     }
   };
 
+  // Team CRUD operations
+  const handleAddTeam = async () => {
+    if (!newTeamName.trim()) {
+      alert('يرجى إدخال اسم الفريق');
+      return;
+    }
+
+    // Check for duplicate
+    if (teams.some(t => t.name === newTeamName.trim())) {
+      alert('اسم الفريق موجود بالفعل');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .insert({ name: newTeamName.trim() });
+      
+      if (error) throw error;
+      
+      setNewTeamName('');
+      await loadInitialData();
+      alert('تم إضافة الفريق بنجاح');
+    } catch (error) {
+      console.error('Error adding team:', error);
+      alert('خطأ في إضافة الفريق');
+    }
+  };
+
+  const handleEditTeam = async (teamId: string, newName: string) => {
+    if (!newName.trim()) {
+      alert('يرجى إدخال اسم الفريق');
+      return;
+    }
+
+    // Check for duplicate (excluding current team)
+    if (teams.some(t => t.id !== teamId && t.name === newName.trim())) {
+      alert('اسم الفريق موجود بالفعل');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({ name: newName.trim() })
+        .eq('id', teamId);
+      
+      if (error) throw error;
+      
+      setEditingTeamId(null);
+      setEditingTeamName('');
+      await loadInitialData();
+      alert('تم تحديث الفريق بنجاح');
+    } catch (error) {
+      console.error('Error updating team:', error);
+      alert('خطأ في تحديث الفريق');
+    }
+  };
+
+  const handleDeleteTeam = async (teamId: string, teamName: string) => {
+    if (!confirm(`هل أنت متأكد من حذف الفريق "${teamName}"؟`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId);
+      
+      if (error) throw error;
+      
+      // Remove from selected teams if present
+      setSelectedTeams(prev => prev.filter(t => t !== teamName));
+      
+      await loadInitialData();
+      alert('تم حذف الفريق بنجاح');
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      alert('خطأ في حذف الفريق');
+    }
+  };
+
+  const handleMoveTeam = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= teams.length) return;
+    
+    const newTeams = [...teams];
+    const [movedTeam] = newTeams.splice(fromIndex, 1);
+    newTeams.splice(toIndex, 0, movedTeam);
+    setTeams(newTeams);
+  };
+
+  const toggleTeamSelection = (teamName: string) => {
+    setSelectedTeams(prev => {
+      if (prev.includes(teamName)) {
+        return prev.filter(t => t !== teamName);
+      } else {
+        return [...prev, teamName];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedTeams(teams.map(t => t.name));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedTeams([]);
+  };
+
   return (
     <div className="container">
       <div className="header">
@@ -414,34 +529,229 @@ export default function HostPage() {
               <span>إدارة الفرق</span>
             </div>
           </div>
-          <div>
-            <label htmlFor="teamSelect">اختر الفرق المشاركة:</label>
-            <select
-              id="teamSelect"
-              multiple
-              value={selectedTeams}
-              onChange={(e) => {
-                const selected = Array.from(e.target.selectedOptions, option => option.value);
-                setSelectedTeams(selected);
-              }}
-            >
-              {teams.map(team => (
-                <option key={team.id} value={team.name}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-            <button className="btn btn-primary" onClick={handleSetTeams} style={{ width: '100%', marginTop: '12px' }}>
-              <span>✓</span>
-              تعيين الفرق المحددة
+          
+          {/* Add Team Form */}
+          <div style={{ marginBottom: '20px', padding: '16px', background: 'var(--secondary-light)', borderRadius: '8px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>➕ إضافة فريق جديد</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddTeam()}
+                placeholder="اسم الفريق"
+                style={{ flex: 1, padding: '8px 12px', border: '2px solid var(--border-color)', borderRadius: '6px' }}
+              />
+              <button className="btn btn-success" onClick={handleAddTeam} style={{ padding: '8px 16px' }}>
+                إضافة
+              </button>
+            </div>
+          </div>
+
+          {/* Bulk Actions */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <button className="btn btn-secondary" onClick={handleSelectAll} style={{ flex: 1, fontSize: '14px', padding: '8px' }}>
+              ✓ تحديد الكل
+            </button>
+            <button className="btn btn-secondary" onClick={handleDeselectAll} style={{ flex: 1, fontSize: '14px', padding: '8px' }}>
+              ✕ إلغاء الكل
             </button>
           </div>
+
+          {/* Teams Grid */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+            gap: '12px',
+            marginBottom: '20px',
+            maxHeight: '400px',
+            overflowY: 'auto',
+            padding: '4px'
+          }}>
+            {teams.map((team, index) => {
+              const isSelected = selectedTeams.includes(team.name);
+              const isEditing = editingTeamId === team.id;
+              
+              return (
+                <div
+                  key={team.id}
+                  style={{
+                    background: isSelected ? 'linear-gradient(135deg, #761814, #5a120f)' : 'white',
+                    border: `2px solid ${isSelected ? '#761814' : 'var(--border-color)'}`,
+                    borderRadius: '12px',
+                    padding: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                    boxShadow: isSelected ? '0 4px 6px rgba(118, 24, 20, 0.2)' : 'none'
+                  }}
+                  onClick={() => !isEditing && toggleTeamSelection(team.name)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleTeamSelection(team.name)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editingTeamName}
+                        onChange={(e) => setEditingTeamName(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') handleEditTeam(team.id, editingTeamName);
+                          if (e.key === 'Escape') { setEditingTeamId(null); setEditingTeamName(''); }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          padding: '4px 8px',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '4px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    ) : (
+                      <span style={{
+                        flex: 1,
+                        fontWeight: 600,
+                        color: isSelected ? 'white' : 'var(--text-primary)',
+                        fontSize: '14px'
+                      }}>
+                        {team.name}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '4px', justifyContent: 'space-between' }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        onClick={() => handleMoveTeam(index, index - 1)}
+                        disabled={index === 0}
+                        style={{
+                          padding: '4px 8px',
+                          background: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--secondary-light)',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: index === 0 ? 'not-allowed' : 'pointer',
+                          opacity: index === 0 ? 0.5 : 1,
+                          color: isSelected ? 'white' : 'var(--text-primary)',
+                          fontSize: '12px'
+                        }}
+                        title="تحريك لأعلى"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => handleMoveTeam(index, index + 1)}
+                        disabled={index === teams.length - 1}
+                        style={{
+                          padding: '4px 8px',
+                          background: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--secondary-light)',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: index === teams.length - 1 ? 'not-allowed' : 'pointer',
+                          opacity: index === teams.length - 1 ? 0.5 : 1,
+                          color: isSelected ? 'white' : 'var(--text-primary)',
+                          fontSize: '12px'
+                        }}
+                        title="تحريك لأسفل"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={() => handleEditTeam(team.id, editingTeamName)}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                            title="حفظ"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => { setEditingTeamId(null); setEditingTeamName(''); }}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                            title="إلغاء"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => { setEditingTeamId(team.id); setEditingTeamName(team.name); }}
+                            style={{
+                              padding: '4px 8px',
+                              background: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--secondary-light)',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              color: isSelected ? 'white' : 'var(--text-primary)',
+                              fontSize: '12px'
+                            }}
+                            title="تعديل"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTeam(team.id, team.name)}
+                            style={{
+                              padding: '4px 8px',
+                              background: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--secondary-light)',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              color: isSelected ? 'white' : '#ef4444',
+                              fontSize: '12px'
+                            }}
+                            title="حذف"
+                          >
+                            🗑️
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Set Teams Button */}
+          <button className="btn btn-primary" onClick={handleSetTeams} style={{ width: '100%', marginBottom: '16px' }}>
+            <span>✓</span>
+            تعيين الفرق المحددة ({selectedTeams.length})
+          </button>
           
+          {/* Current Team Display */}
           <div className="team-display">
             <h3>الفريق الحالي</h3>
             <div className="team-name">{currentTeam}</div>
           </div>
           
+          {/* Navigation Buttons */}
           <div className="btn-group">
             <button className="btn btn-secondary" onClick={handlePreviousTeam}>
               <span>◀</span>
