@@ -28,6 +28,7 @@ export default function HostPage() {
   const [judges, setJudges] = useState<Judge[]>([]);
   const [answers, setAnswers] = useState<AnswersByTeam>({});
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [judgeSubmissions, setJudgeSubmissions] = useState<{ [judgeId: string]: number }>({});
   
   // Team management state
   const [newTeamName, setNewTeamName] = useState<string>('');
@@ -154,7 +155,20 @@ export default function HostPage() {
       });
       setAnswers(grouped);
       
+      // Calculate judge submissions for current team
+      const submissions: { [judgeId: string]: number } = {};
+      answersData
+        .filter(answer => answer.team_id === currentTeam)
+        .forEach(answer => {
+          if (!submissions[answer.judge_id]) {
+            submissions[answer.judge_id] = 0;
+          }
+          submissions[answer.judge_id]++;
+        });
+      setJudgeSubmissions(submissions);
+      
       console.log('Answers loaded and grouped:', grouped);
+      console.log('Judge submissions for current team:', submissions);
       
       // Also update leaderboard when answers change
       await loadLeaderboard(sessionId);
@@ -842,14 +856,83 @@ export default function HostPage() {
               <div className="card-icon">⚖️</div>
               <span>المحكمون المتصلون</span>
             </div>
+            {judges.length > 0 && selectedQuestions.length > 0 && (
+              <div style={{
+                background: judges.filter(j => judgeSubmissions[j.id] === selectedQuestions.length).length === judges.length 
+                  ? '#10b981' 
+                  : '#f59e0b',
+                color: 'white',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 600
+              }}>
+                {judges.filter(j => judgeSubmissions[j.id] === selectedQuestions.length).length}/{judges.length} أرسلوا
+              </div>
+            )}
           </div>
-          <ul className="judge-list">
+          <ul className="judge-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {judges.length === 0 ? (
               <li className="empty-state">لا يوجد محكمون متصلون</li>
             ) : (
-              judges.map(judge => (
-                <li key={judge.id}>{judge.name}</li>
-              ))
+              judges.map(judge => {
+                const judgeAnswerCount = judgeSubmissions[judge.id] || 0;
+                const totalQuestions = selectedQuestions.length;
+                const hasSubmitted = totalQuestions > 0 && judgeAnswerCount === totalQuestions;
+                
+                return (
+                  <li key={judge.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px',
+                    background: hasSubmitted ? '#f0fdf4' : (totalQuestions > 0 ? '#fef3c7' : 'white'),
+                    borderRadius: '8px',
+                    marginBottom: '8px',
+                    border: `2px solid ${hasSubmitted ? '#10b981' : (totalQuestions > 0 ? '#f59e0b' : 'var(--border-color)')}`,
+                    transition: 'all 0.2s'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '20px' }}>
+                        {hasSubmitted ? '✅' : (totalQuestions > 0 ? '⏳' : '👤')}
+                      </span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {judge.name}
+                      </span>
+                    </div>
+                    {totalQuestions > 0 && (
+                      <div style={{
+                        fontSize: '12px',
+                        color: hasSubmitted ? '#10b981' : '#f59e0b',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        {hasSubmitted ? (
+                          <>
+                            <span>تم الإرسال</span>
+                            <span style={{ 
+                              background: '#10b981', 
+                              color: 'white', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px',
+                              fontSize: '11px'
+                            }}>
+                              {judgeAnswerCount}/{totalQuestions}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{judgeAnswerCount}/{totalQuestions}</span>
+                            <span>أسئلة</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>
